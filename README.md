@@ -188,7 +188,7 @@ cliniqai/
 
 ```bash
 # 1. Clone and setup
-git clone https://github.com/your-org/cliniqai
+git clone https://github.com/anonymous-atharvv/CliniqAI-raw
 cd cliniqai
 cp .env.example .env  # Fill in your API keys
 
