@@ -1,0 +1,238 @@
+openapi: "3.1.0"
+info:
+  title: CliniQAI Hospital Intelligence API
+  version: "1.0.0"
+  description: |
+    HIPAA-compliant hospital AI platform API.
+    All endpoints require JWT Bearer authentication.
+    PHI is de-identified before AI processing.
+    All AI outputs carry the disclaimer: "AI Decision Support Only."
+  contact:
+    name: CliniQAI Engineering
+    email: eng@cliniqai.com
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.{hospital_id}.cliniqai.com
+    description: Hospital-specific production endpoint
+    variables:
+      hospital_id:
+        default: hospital_001
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RiskLevel:
+      type: string
+      enum: [CRITICAL, HIGH, MEDIUM, LOW]
+
+    DifferentialDiagnosis:
+      type: object
+      required: [condition, icd10, supporting_evidence, probability_rank, confidence]
+      properties:
+        condition:           { type: string }
+        icd10:               { type: string, example: "A41.9" }
+        supporting_evidence: { type: array, items: { type: string } }
+        contradicting_evidence: { type: array, items: { type: string } }
+        probability_rank:    { type: string, enum: [primary, alternative, rule_out] }
+        confidence:          { type: number, minimum: 0, maximum: 1 }
+
+    RecommendedAction:
+      type: object
+      required: [action, urgency, rationale]
+      properties:
+        action:        { type: string }
+        urgency:       { type: string, enum: [immediate, short_term, monitoring] }
+        rationale:     { type: string }
+        evidence_base: { type: string }
+
+    InferenceResponse:
+      type: object
+      required:
+        - inference_id
+        - risk_level
+        - patient_state_summary
+        - differential_diagnoses
+        - recommended_actions
+        - human_review_required
+        - disclaimer
+      properties:
+        inference_id:          { type: string, format: uuid }
+        patient_deident_id:    { type: string, format: uuid }
+        timestamp:             { type: string, format: date-time }
+        processing_ms:         { type: integer }
+        patient_state_summary: { type: string }
+        differential_diagnoses:
+          type: array
+          items: { $ref: "#/components/schemas/DifferentialDiagnosis" }
+        risk_level:            { $ref: "#/components/schemas/RiskLevel" }
+        risk_justification:    { type: string }
+        recommended_actions:
+          type: array
+          items: { $ref: "#/components/schemas/RecommendedAction" }
+        overall_confidence:    { type: string, enum: [HIGH, MEDIUM, LOW] }
+        data_gaps:             { type: array, items: { type: string } }
+        human_review_required: { type: boolean }
+        human_review_reason:   { type: string }
+        disclaimer:
+          type: string
+          example: "AI Decision Support Only. Physician review required before any clinical action."
+
+    PatientSummary:
+      type: object
+      properties:
+        patient_id:        { type: string, format: uuid }
+        deidentified_id:   { type: string, format: uuid }
+        birth_year:        { type: integer }
+        gender:            { type: string }
+        risk_level:        { $ref: "#/components/schemas/RiskLevel" }
+        data_quality_score:{ type: number, minimum: 0, maximum: 1 }
+        is_active:         { type: boolean }
+
+    HealthResponse:
+      type: object
+      properties:
+        status:   { type: string, enum: [healthy, degraded, unhealthy] }
+        version:  { type: string }
+        services: { type: object }
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service healthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+
+  /auth/login:
+    post:
+      summary: Authenticate and get JWT tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, hospital_id]
+              properties:
+                username:    { type: string }
+                password:    { type: string, format: password }
+                hospital_id: { type: string }
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:  { type: string }
+                  refresh_token: { type: string }
+                  token_type:    { type: string, example: bearer }
+                  expires_in:    { type: integer, example: 3600 }
+                  user_role:     { type: string }
+        "401":
+          description: Invalid credentials
+
+  /api/v1/patients:
+    get:
+      summary: List active patients for requesting user's ward
+      parameters:
+        - in: query
+          name: unit_type
+          schema: { type: string, enum: [icu, ward, ed] }
+        - in: query
+          name: risk_level
+          schema: { $ref: "#/components/schemas/RiskLevel" }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        "200":
+          description: Patient list
+        "401": { description: Unauthorized }
+        "403": { description: Insufficient role }
+
+  /api/v1/patients/{patient_id}/intelligence:
+    get:
+      summary: Get full AI intelligence package for a patient
+      description: |
+        PRIMARY ENDPOINT. Triggers 7-agent pipeline and LLM reasoning.
+        SLA: < 10 seconds. PHI de-identified before AI processing.
+        DISCLAIMER: AI Decision Support Only. Physician review required.
+      parameters:
+        - in: path
+          name: patient_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: AI intelligence package
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InferenceResponse" }
+
+  /api/v1/inference/patient:
+    post:
+      summary: Run AI inference for a patient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [patient_deident_id, encounter_id]
+              properties:
+                patient_deident_id: { type: string, format: uuid }
+                encounter_id:       { type: string, format: uuid }
+                chief_complaint:    { type: string }
+                urgency:            { type: string, enum: [routine, urgent, stat] }
+      responses:
+        "200":
+          description: Inference result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InferenceResponse" }
+
+  /api/v1/vitals/{patient_deident_id}/ai-prediction:
+    get:
+      summary: Get latest AI vitals prediction (TFT model)
+      parameters:
+        - in: path
+          name: patient_deident_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: TFT prediction with NEWS2, deterioration, sepsis probabilities
+
+  /api/v1/agents/status:
+    get:
+      summary: Get status of all 7 AI agents
+      responses:
+        "200":
+          description: Agent status list
+
+  /api/v1/admin/dashboard/cfo:
+    get:
+      summary: CFO financial impact dashboard
+      responses:
+        "200":
+          description: Financial KPIs, clinical quality, AI adoption metrics

@@ -1,0 +1,48 @@
+# CliniQAI Kubernetes Namespace
+# All CliniQAI resources run in this namespace.
+# ResourceQuota enforces limits — prevents runaway workloads.
+# NetworkPolicy restricts pod-to-pod communication (defense-in-depth).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cliniqai
+  labels:
+    app.kubernetes.io/name: cliniqai
+    hipaa-compliant: "true"
+    environment: production
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: cliniqai-quota
+  namespace: cliniqai
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: "32Gi"
+    limits.cpu: "32"
+    limits.memory: "64Gi"
+    pods: "50"
+    services: "20"
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cliniqai-network-policy
+  namespace: cliniqai
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+  - from:
+    - podSelector: {}              # Allow intra-namespace
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx      # Allow ingress controller
+  egress:
+  - to:
+    - podSelector: {}              # Allow intra-namespace
+  - ports:
+    - port: 443                    # HTTPS to external APIs (Azure OpenAI, Anthropic)
+    - port: 53                     # DNS
+      protocol: UDP

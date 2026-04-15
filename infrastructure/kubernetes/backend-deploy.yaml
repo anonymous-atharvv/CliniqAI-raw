@@ -1,0 +1,235 @@
+# CliniQAI Backend — Kubernetes Deployment
+# Runs 3 replicas in production (HA), 1 in staging.
+# Health checks on /health endpoint.
+# Secrets from AWS Secrets Manager via External Secrets Operator.
+# Resource limits prevent noisy-neighbor issues.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cliniqai-backend
+  namespace: cliniqai
+  labels:
+    app: cliniqai-backend
+    version: "1.0.0"
+    component: api
+spec:
+  replicas: 3
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: cliniqai-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0   # Zero-downtime deployments only
+  template:
+    metadata:
+      labels:
+        app: cliniqai-backend
+        version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: cliniqai-backend
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: api
+          image: cliniqai/backend:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+            - name: metrics
+              containerPort: 9090
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: DEBUG
+              value: "false"
+            - name: POSTGRES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: cliniqai-db-secret
+                  key: host
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cliniqai-db-secret
+                  key: password
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cliniqai-redis-secret
+                  key: url
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cliniqai-auth-secret
+                  key: jwt_secret_key
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cliniqai-ai-secret
+                  key: anthropic_api_key
+            - name: KMS_KEY_ARN
+              valueFrom:
+                secretKeyRef:
+                  name: cliniqai-kms-secret
+                  key: key_arn
+            - name: DEIDENT_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: cliniqai-compliance-secret
+                  key: deident_salt
+            - name: HOSPITAL_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cliniqai-hospital-config
+                  key: hospital_id
+            - name: HOSPITAL_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: cliniqai-hospital-config
+                  key: hospital_name
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            failureThreshold: 30
+            periodSeconds: 5
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+          command:
+            - uvicorn
+            - main:app
+            - --host=0.0.0.0
+            - --port=8000
+            - --workers=4
+            - --loop=uvloop
+            - --log-level=warning
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: cliniqai-models-pvc
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [cliniqai-backend]
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cliniqai-backend
+  namespace: cliniqai
+  labels:
+    app: cliniqai-backend
+spec:
+  selector:
+    app: cliniqai-backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cliniqai-backend
+  namespace: cliniqai
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/cliniqai-backend-role
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cliniqai-backend-hpa
+  namespace: cliniqai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cliniqai-backend
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cliniqai-backend-pdb
+  namespace: cliniqai
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: cliniqai-backend
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cliniqai-hospital-config
+  namespace: cliniqai
+data:
+  hospital_id: "hospital_prod_001"
+  hospital_name: "St. Mary Community Hospital"
+  hospital_ehr_system: "epic"
+  hospital_bed_count: "300"
+  feature_sepsis_prediction: "true"
+  feature_imaging_ai: "true"
+  feature_pharmacist_agent: "true"

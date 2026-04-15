@@ -1,0 +1,145 @@
+# PostgreSQL + TimescaleDB StatefulSet
+# Note: In production, use AWS RDS Multi-AZ instead of self-managed.
+# This manifest is for staging/dev environments on Kubernetes.
+# Production: replace with ExternalName service pointing to RDS endpoint.
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: cliniqai
+  labels:
+    app: postgres
+spec:
+  serviceName: postgres
+  replicas: 1   # For staging. Production: use RDS Multi-AZ.
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      securityContext:
+        runAsUser: 999
+        fsGroup: 999
+      initContainers:
+        - name: init-permissions
+          image: busybox
+          command: ["sh", "-c", "chown -R 999:999 /var/lib/postgresql/data"]
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+      containers:
+        - name: postgres
+          image: timescale/timescaledb:latest-pg16
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: cliniqai
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: cliniqai-db-secret
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cliniqai-db-secret
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          args:
+            - postgres
+            - -c
+            - shared_preload_libraries=timescaledb,pg_stat_statements
+            - -c
+            - max_connections=200
+            - -c
+            - shared_buffers=512MB
+            - -c
+            - effective_cache_size=2GB
+            - -c
+            - log_min_duration_statement=1000
+            - -c
+            - ssl=on
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "2Gi"
+            limits:
+              cpu: "2000m"
+              memory: "8Gi"
+          livenessProbe:
+            exec:
+              command: [pg_isready, -U, cliniqai, -d, cliniqai]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: [pg_isready, -U, cliniqai, -d, cliniqai]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: cliniqai-db-init-scripts
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: gp3
+        resources:
+          requests:
+            storage: 200Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: cliniqai
+  labels:
+    app: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      name: postgres
+  type: ClusterIP
+---
+# PRODUCTION ALTERNATIVE: ExternalName to RDS
+# Uncomment and update host when using AWS RDS Multi-AZ:
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: postgres
+#   namespace: cliniqai
+# spec:
+#   type: ExternalName
+#   externalName: cliniqai-prod.xxxxxxxxxxxx.ap-south-1.rds.amazonaws.com
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cliniqai-db-init-scripts
+  namespace: cliniqai
+data:
+  01_init.sql: |
+    -- Loaded from scripts/init_db.sql at cluster bootstrap.
+    -- See scripts/init_db.sql for the full schema.
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+    CREATE EXTENSION IF NOT EXISTS "timescaledb";
+    CREATE EXTENSION IF NOT EXISTS "pg_trgm";

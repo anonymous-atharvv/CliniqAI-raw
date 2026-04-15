@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets - NEVER commit these
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+
+# Database
+*.db
+*.sqlite3
+postgres_data/
+
+# Models
+/models/
+*.onnx
+*.pt
+*.bin
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/build/
+.next/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Terraform state - use remote state
+infrastructure/terraform/.terraform/
+infrastructure/terraform/terraform.tfstate
+infrastructure/terraform/terraform.tfstate.backup
+
+# Dev data - NEVER commit real patient data
+dev_data/
+*.csv
+*.parquet
+
+# Logs
+logs/
+*.log
+
+# Coverage
+.coverage
+htmlcov/

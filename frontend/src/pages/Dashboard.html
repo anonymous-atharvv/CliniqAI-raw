@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CliniQAI — Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+<style>
+/* ─── DESIGN SYSTEM ─────────────────────────────────────────────────── */
+:root {
+  --bg-base:       #050810;
+  --bg-surface:    #0a0e1a;
+  --bg-elevated:   #0f1524;
+  --bg-card:       #131928;
+  --bg-hover:      #1a2235;
+
+  --border-dim:    rgba(255,255,255,0.06);
+  --border-subtle: rgba(255,255,255,0.10);
+  --border-accent: rgba(0,210,150,0.25);
+
+  --text-primary:  #e8edf8;
+  --text-secondary:#8e9bbf;
+  --text-dim:      #4a5270;
+
+  --critical:      #ff3d5a;
+  --critical-glow: rgba(255,61,90,0.15);
+  --high:          #ff8c42;
+  --high-glow:     rgba(255,140,66,0.12);
+  --medium:        #f4c542;
+  --medium-glow:   rgba(244,197,66,0.10);
+  --low:           #00d296;
+  --low-glow:      rgba(0,210,150,0.10);
+  --accent:        #00d296;
+  --accent-blue:   #4d8fff;
+
+  --font-display: 'Syne', sans-serif;
+  --font-body:    'DM Mono', monospace;
+  --font-serif:   'Instrument Serif', serif;
+
+  --radius-sm:    4px;
+  --radius:       8px;
+  --radius-lg:    12px;
+  --shadow-card:  0 4px 24px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.3);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scrollbar-width: thin; scrollbar-color: #1a2235 #050810; }
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── SCANLINE TEXTURE ───────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* ─── LAYOUT ─────────────────────────────────────────────────────────── */
+.app { display: grid; grid-template-columns: 220px 1fr; grid-template-rows: 52px 1fr; min-height: 100vh; }
+
+/* ─── HEADER ─────────────────────────────────────────────────────────── */
+.header {
+  grid-column: 1 / -1;
+  background: rgba(10,14,26,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.logo-icon {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-blue));
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.logo sup {
+  font-size: 9px;
+  color: var(--accent);
+  margin-left: 1px;
+  font-weight: 400;
+  font-family: var(--font-body);
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(1.2); }
+}
+
+.header-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.header-stat-val { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.header-stat-lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.header-divider { width: 1px; height: 24px; background: var(--border-dim); }
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dim);
+  border-radius: 20px;
+  padding: 4px 12px 4px 4px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.user-chip:hover { border-color: var(--border-subtle); }
+
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4d8fff, #00d296);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-display);
+}
+
+/* ─── SIDEBAR ────────────────────────────────────────────────────────── */
+.sidebar {
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-dim);
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.nav-section-label {
+  padding: 8px 16px 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text-secondary);
+  font-size: 12px;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+
+.nav-item:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--bg-elevated);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+.nav-item.active .nav-icon { opacity: 1; }
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--critical);
+  color: white;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  animation: badge-pulse 3s ease infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 70%, 100% { box-shadow: 0 0 0 0 rgba(255,61,90,0.4); }
+  35% { box-shadow: 0 0 0 4px rgba(255,61,90,0); }
+}
+
+/* ─── MAIN CONTENT ───────────────────────────────────────────────────── */
+.main {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--bg-base);
+}
+
+.page-header {
+  padding: 20px 24px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.page-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.page-subtitle { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+.page-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* ─── BUTTONS ────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #050810;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: #00f0aa; border-color: #00f0aa; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+.btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
+.btn-critical {
+  background: var(--critical-glow);
+  color: var(--critical);
+  border-color: rgba(255,61,90,0.3);
+}
+
+/* ─── KPI STRIP ──────────────────────────────────────────────────────── */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  margin: 16px 24px;
+  background: var(--border-dim);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.kpi-card {
+  background: var(--bg-card);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.2s;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.kpi-card.critical::before { background: var(--critical); }
+.kpi-card.high::before     { background: var(--high); }
+.kpi-card.medium::before   { background: var(--medium); }
+.kpi-card.good::before     { background: var(--accent); }
+
+.kpi-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.kpi-value {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.kpi-value.critical { color: var(--critical); }
+.kpi-value.high     { color: var(--high); }
+.kpi-value.medium   { color: var(--medium); }
+.kpi-value.good     { color: var(--accent); }
+
+.kpi-delta {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.kpi-delta.up   { color: var(--critical); }
+.kpi-delta.down { color: var(--accent); }
+
+/* ─── GRID LAYOUT ────────────────────────────────────────────────────── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 24px 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 0 24px 16px; }
+.full-width { padding: 0 24px 16px; }
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.card-header {
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tag-live { background: rgba(0,210,150,0.12); color: var(--accent); border: 1px solid rgba(0,210,150,0.2); }
+.tag-ai   { background: rgba(77,143,255,0.12); color: var(--accent-blue); border: 1px solid rgba(77,143,255,0.2); }
+
+.card-body { padding: 14px 18px; }
+
+/* ─── PATIENT TABLE ──────────────────────────────────────────────────── */
+.patient-table { width: 100%; border-collapse: collapse; }
+
+.patient-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.patient-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  vertical-align: middle;
+}
+
+.patient-table tr:last-child td { border-bottom: none; }
+
+.patient-table tr:hover td { background: var(--bg-hover); }
+
+.patient-table tr { transition: background 0.1s; cursor: pointer; }
+
+.patient-id {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.patient-meta { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+
+/* Risk Badge */
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.risk-badge.CRITICAL {
+  background: var(--critical-glow);
+  color: var(--critical);
+  border-color: rgba(255,61,90,0.3);
+  animation: critical-flash 2s ease infinite;
+}
+
+@keyframes critical-flash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,61,90,0); }
+  50%       { box-shadow: 0 0 8px rgba(255,61,90,0.3); }
+}
+
+.risk-badge.HIGH   { background: var(--high-glow);   color: var(--high);   border-color: rgba(255,140,66,0.3); }
+.risk-badge.MEDIUM { background: var(--medium-glow);  color: var(--medium); border-color: rgba(244,197,66,0.3); }
+.risk-badge.LOW    { background: var(--low-glow);     color: var(--low);    border-color: rgba(0,210,150,0.3); }
+
+.risk-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Vital mini display */
+.vitals-mini {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+}
+
+.vital-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 32px;
+}
+
+.vital-chip-val {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.vital-chip-val.abnormal { color: var(--high); }
+.vital-chip-val.critical { color: var(--critical); }
+
+.vital-chip-lbl { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Score chips */
+.score-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0 6px;
+}
+
+.score-chip.low    { background: rgba(0,210,150,0.12);  color: var(--accent); }
+.score-chip.medium { background: rgba(244,197,66,0.12); color: var(--medium); }
+.score-chip.high   { background: rgba(255,140,66,0.15); color: var(--high); }
+.score-chip.crit   { background: rgba(255,61,90,0.15);  color: var(--critical); }
+
+/* Trend arrow */
+.trend {
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.trend.up      { color: var(--critical); }
+.trend.stable  { color: var(--text-dim); }
+.trend.down    { color: var(--accent); }
+
+/* Action button in table */
+.table-action {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all 0.15s;
+}
+.table-action:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border-subtle); }
+
+/* ─── ALERT PANEL ────────────────────────────────────────────────────── */
+.alert-list { display: flex; flex-direction: column; gap: 8px; }
+
+.alert-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.alert-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+.alert-item.critical { background: var(--critical-glow); border-color: rgba(255,61,90,0.2); }
+.alert-item.critical::before { background: var(--critical); }
+.alert-item.high     { background: var(--high-glow);     border-color: rgba(255,140,66,0.2); }
+.alert-item.high::before { background: var(--high); }
+.alert-item.medium   { background: var(--medium-glow);   border-color: rgba(244,197,66,0.2); }
+.alert-item.medium::before { background: var(--medium); }
+
+.alert-item:hover { transform: translateX(2px); }
+
+.alert-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.alert-content { flex: 1; min-width: 0; }
+.alert-patient { font-family: var(--font-display); font-size: 13px; font-weight: 700; }
+.alert-message { font-size: 11px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+.alert-time { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+
+.alert-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+
+/* ─── VITALS SPARKLINE ───────────────────────────────────────────────── */
+.sparkline-container { position: relative; }
+
+canvas.sparkline {
+  display: block;
+}
+
+/* ─── SEPSIS RISK GAUGE ──────────────────────────────────────────────── */
+.gauge-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.gauge-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.gauge-ring svg {
+  transform: rotate(-90deg);
+}
+
+.gauge-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gauge-pct {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.gauge-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ─── AGENT STATUS ───────────────────────────────────────────────────── */
+.agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.agent-card {
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.agent-status-dot.running  { background: var(--accent); animation: pulse 1.5s ease infinite; }
+.agent-status-dot.idle     { background: var(--text-dim); }
+.agent-status-dot.error    { background: var(--critical); }
+.agent-status-dot.timeout  { background: var(--high); }
+
+.agent-name { font-size: 11px; font-weight: 500; color: var(--text-primary); flex: 1; }
+.agent-time { font-size: 10px; color: var(--text-dim); }
+
+/* ─── FEEDBACK UI ────────────────────────────────────────────────────── */
+.feedback-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius);
+  margin-top: 8px;
+}
+
+.feedback-label { font-size: 11px; color: var(--text-secondary); flex: 1; }
+
+.feedback-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.feedback-btn:hover { background: var(--bg-card); transform: scale(1.1); }
+.feedback-btn.thumbup:hover  { border-color: rgba(0,210,150,0.5); background: var(--low-glow); }
+.feedback-btn.thumbdown:hover { border-color: rgba(255,61,90,0.5); background: var(--critical-glow); }
+
+/* ─── BED MAP ────────────────────────────────────────────────────────── */
+.bed-map {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  padding: 4px;
+}
+
+.bed-cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  border: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.bed-cell:hover { transform: scale(1.15); z-index: 10; }
+
+.bed-cell.available  { background: rgba(0,210,150,0.08);  color: var(--accent);    border-color: rgba(0,210,150,0.2); }
+.bed-cell.occupied   { background: rgba(255,140,66,0.08); color: var(--high);      border-color: rgba(255,140,66,0.2); }
+.bed-cell.critical-patient { background: rgba(255,61,90,0.10); color: var(--critical); border-color: rgba(255,61,90,0.3); animation: critical-flash 3s ease infinite; }
+.bed-cell.cleaning   { background: rgba(77,143,255,0.06); color: var(--accent-blue); border-color: rgba(77,143,255,0.2); }
+
+/* ─── ANIMATIONS ─────────────────────────────────────────────────────── */
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card { animation: fadeIn 0.4s ease both; }
+.card:nth-child(1) { animation-delay: 0.05s; }
+.card:nth-child(2) { animation-delay: 0.10s; }
+.card:nth-child(3) { animation-delay: 0.15s; }
+
+/* ─── SCROLLBAR ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: #1a2235; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #243050; }
+
+/* ─── DISCLAIMER BANNER ──────────────────────────────────────────────── */
+.disclaimer {
+  margin: 0 24px 12px;
+  padding: 8px 14px;
+  background: rgba(77,143,255,0.05);
+  border: 1px solid rgba(77,143,255,0.15);
+  border-radius: var(--radius);
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.disclaimer strong { color: var(--accent-blue); }
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ─── HEADER ──────────────────────────────────────────────────── -->
+  <header class="header">
+    <a class="logo" href="#">
+      <div class="logo-icon">⚕</div>
+      CliniQ<span style="color:var(--accent)">AI</span><sup>β</sup>
+    </a>
+
+    <div style="width:1px;height:24px;background:var(--border-dim)"></div>
+
+    <div style="font-size:11px;color:var(--text-dim)">
+      <span style="color:var(--text-secondary)">St. Mary Community Hospital</span> &middot; ICU Ward B
+    </div>
+
+    <div class="live-indicator" style="margin-left:8px">
+      <div class="live-dot"></div>
+      LIVE
+    </div>
+
+    <div class="header-meta">
+      <div class="header-stat">
+        <span class="header-stat-val" id="clock">--:--:--</span>
+        <span class="header-stat-lbl">Local Time</span>
+      </div>
+
+      <div class="header-divider"></div>
+
+      <div class="header-stat">
+        <span class="header-stat-val" style="color:var(--high)">3</span>
+        <span class="header-stat-lbl">Pending Alerts</span>
+      </div>
+
+      <div class="header-divider"></div>
+
+      <div class="header-stat">
+        <span class="header-stat-val">23/28</span>
+        <span class="header-stat-lbl">Beds Occupied</span>
+      </div>
+
+      <div class="header-divider"></div>
+
+      <div class="user-chip">
+        <div class="avatar">DR</div>
+        <span style="font-size:12px;color:var(--text-secondary)">Dr. Rajan &middot; Attending</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── SIDEBAR ─────────────────────────────────────────────────── -->
+  <nav class="sidebar">
+    <div class="nav-section-label">Clinical</div>
+    <div class="nav-item active">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
+        <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
+      </svg>
+      Dashboard
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>
+      </svg>
+      ICU Monitor
+      <span class="nav-badge">2</span>
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M8 2v12M2 8h12"/>
+      </svg>
+      Patient List
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 14V6l5-4 5 4v8"/><rect x="6" y="10" width="4" height="4"/>
+      </svg>
+      Bed Management
+    </div>
+
+    <div class="nav-section-label" style="margin-top:8px">AI Agents</div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="8" cy="6" r="3"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5"/>
+      </svg>
+      Agent Status
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M2 4h12M2 8h8M2 12h10"/>
+      </svg>
+      AI Reasoning
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M8 2L2 6v8h4v-4h4v4h4V6z"/>
+      </svg>
+      Drug Safety
+      <span class="nav-badge" style="background:var(--high)">1</span>
+    </div>
+
+    <div class="nav-section-label" style="margin-top:8px">Operations</div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M2 12l4-4 3 3 5-6"/>
+      </svg>
+      Analytics
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12M6 2v12"/>
+      </svg>
+      CFO Dashboard
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M8 2a6 6 0 100 12A6 6 0 008 2zm0 4v4M8 11h.01"/>
+      </svg>
+      Compliance
+    </div>
+  </nav>
+
+  <!-- ─── MAIN ─────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div>
+        <div class="page-title">ICU Command Center</div>
+        <div class="page-subtitle">28 patients &middot; Real-time AI monitoring &middot; Last sync <span id="sync-time">just now</span></div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-ghost">⬇ Export Report</button>
+        <button class="btn btn-primary">+ New Admission</button>
+      </div>
+    </div>
+
+    <!-- AI Disclaimer -->
+    <div class="disclaimer">
+      <span>⚕</span>
+      <span><strong>AI Decision Support Only.</strong> All AI recommendations require physician review before clinical action. Confidence scores are probabilistic, not deterministic.</span>
+    </div>
+
+    <!-- KPI Strip -->
+    <div class="kpi-strip">
+      <div class="kpi-card critical">
+        <div class="kpi-label">Critical Risk</div>
+        <div class="kpi-value critical" id="kpi-critical">2</div>
+        <div class="kpi-delta up">▲ 1 from 1h ago</div>
+      </div>
+      <div class="kpi-card high">
+        <div class="kpi-label">High Risk</div>
+        <div class="kpi-value high">5</div>
+        <div class="kpi-delta" style="color:var(--text-dim)">→ unchanged</div>
+      </div>
+      <div class="kpi-card medium">
+        <div class="kpi-label">Sepsis Alerts</div>
+        <div class="kpi-value medium">1</div>
+        <div class="kpi-delta up">▲ new 14m ago</div>
+      </div>
+      <div class="kpi-card good">
+        <div class="kpi-label">Avg NEWS2</div>
+        <div class="kpi-value good">3.2</div>
+        <div class="kpi-delta down">▼ 0.4 improving</div>
+      </div>
+      <div class="kpi-card good">
+        <div class="kpi-label">AI Acceptance</div>
+        <div class="kpi-value" style="color:var(--accent-blue)">74%</div>
+        <div class="kpi-delta down" style="color:var(--accent-blue)">▲ 2% this week</div>
+      </div>
+    </div>
+
+    <!-- Row 1: Patient Table + Alerts -->
+    <div class="grid-2" style="grid-template-columns:3fr 2fr">
+
+      <!-- Patient Table -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            Patient Monitor
+            <span class="card-tag tag-live">Live</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px">Filter ▾</button>
+            <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px">Sort ▾</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="patient-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Risk</th>
+                <th>Vitals</th>
+                <th>NEWS2</th>
+                <th>AI Sepsis</th>
+                <th>Trend</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="patient-tbody">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Active Alerts -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            Active Alerts
+            <span class="card-tag tag-live">Live</span>
+          </div>
+          <span style="font-size:11px;color:var(--text-dim)">3 unacked</span>
+        </div>
+        <div class="card-body">
+          <div class="alert-list" id="alert-list">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Row 2: Sepsis Gauge + Agent Status + Bed Map -->
+    <div class="grid-3">
+
+      <!-- Sepsis + Deterioration Predictions -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            Unit Risk Overview
+            <span class="card-tag tag-ai">AI</span>
+          </div>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+
+          <div style="display:flex;gap:20px;justify-content:center">
+            <!-- Sepsis Gauge -->
+            <div class="gauge-container">
+              <div class="gauge-ring">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--bg-elevated)" stroke-width="8"/>
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--high)"
+                    stroke-width="8" stroke-linecap="round"
+                    stroke-dasharray="326.7" stroke-dashoffset="261" id="sepsis-arc"
+                    style="transition:stroke-dashoffset 1s ease"/>
+                </svg>
+                <div class="gauge-text">
+                  <div class="gauge-pct" style="color:var(--high)">20%</div>
+                  <div class="gauge-label">Sepsis Risk</div>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--text-dim);text-align:center">1 patient &gt;50%</div>
+            </div>
+
+            <!-- Deterioration Gauge -->
+            <div class="gauge-container">
+              <div class="gauge-ring">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--bg-elevated)" stroke-width="8"/>
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent-blue)"
+                    stroke-width="8" stroke-linecap="round"
+                    stroke-dasharray="326.7" stroke-dashoffset="229"/>
+                </svg>
+                <div class="gauge-text">
+                  <div class="gauge-pct" style="color:var(--accent-blue)">30%</div>
+                  <div class="gauge-label">Deterioration</div>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--text-dim);text-align:center">avg 6h probability</div>
+            </div>
+          </div>
+
+          <!-- Distribution bars -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px;font-size:11px">
+              <div style="width:60px;color:var(--text-secondary)">Critical</div>
+              <div style="flex:1;height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden">
+                <div style="width:7%;height:100%;background:var(--critical);border-radius:3px"></div>
+              </div>
+              <div style="width:20px;text-align:right;color:var(--critical);font-weight:600">2</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:11px">
+              <div style="width:60px;color:var(--text-secondary)">High</div>
+              <div style="flex:1;height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden">
+                <div style="width:18%;height:100%;background:var(--high);border-radius:3px"></div>
+              </div>
+              <div style="width:20px;text-align:right;color:var(--high);font-weight:600">5</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:11px">
+              <div style="width:60px;color:var(--text-secondary)">Medium</div>
+              <div style="flex:1;height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden">
+                <div style="width:32%;height:100%;background:var(--medium);border-radius:3px"></div>
+              </div>
+              <div style="width:20px;text-align:right;color:var(--medium);font-weight:600">9</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:11px">
+              <div style="width:60px;color:var(--text-secondary)">Low</div>
+              <div style="flex:1;height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden">
+                <div style="width:43%;height:100%;background:var(--accent);border-radius:3px"></div>
+              </div>
+              <div style="width:20px;text-align:right;color:var(--accent);font-weight:600">12</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- AI Agent Status -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Agent Status</div>
+          <span style="font-size:11px;color:var(--accent)">All operational</span>
+        </div>
+        <div class="card-body">
+          <div class="agent-grid" id="agent-grid">
+            <!-- Injected by JS -->
+          </div>
+
+          <!-- Latest coordinator output -->
+          <div style="margin-top:12px;padding:10px 12px;background:var(--bg-elevated);border:1px solid var(--border-dim);border-radius:var(--radius)">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);margin-bottom:6px">Coordinator — Last Output</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">
+              Consensus reached across 5 agents. Patient B-04 sepsis probability elevated 
+              — escalation sent to attending. Pharmacist agent flagged renal dose adjustment needed.
+            </div>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:6px">Confidence: 82% &middot; 14 minutes ago</div>
+          </div>
+
+          <div class="feedback-strip">
+            <div class="feedback-label">Was this assessment helpful?</div>
+            <button class="feedback-btn thumbup" title="Yes, helpful">👍</button>
+            <button class="feedback-btn thumbdown" title="Not helpful">👎</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bed Map -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Bed Map — ICU B</div>
+          <div style="display:flex;gap:8px;font-size:10px;align-items:center">
+            <span style="display:flex;align-items:center;gap:4px">
+              <span style="width:8px;height:8px;border-radius:2px;background:rgba(0,210,150,0.3);display:inline-block"></span>
+              <span style="color:var(--text-dim)">Free</span>
+            </span>
+            <span style="display:flex;align-items:center;gap:4px">
+              <span style="width:8px;height:8px;border-radius:2px;background:rgba(255,140,66,0.3);display:inline-block"></span>
+              <span style="color:var(--text-dim)">Occupied</span>
+            </span>
+            <span style="display:flex;align-items:center;gap:4px">
+              <span style="width:8px;height:8px;border-radius:2px;background:rgba(255,61,90,0.3);display:inline-block"></span>
+              <span style="color:var(--text-dim)">Critical</span>
+            </span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="bed-map" id="bed-map">
+            <!-- Injected by JS -->
+          </div>
+          <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary)">
+            <span><strong style="color:var(--text-primary)">23</strong> occupied</span>
+            <span><strong style="color:var(--accent)">5</strong> available</span>
+            <span><strong style="color:var(--accent-blue)">2</strong> cleaning</span>
+            <span style="color:var(--high)">⚠ 82% capacity</span>
+          </div>
+
+          <!-- Predicted discharges -->
+          <div style="margin-top:12px;padding:10px;background:var(--bg-elevated);border-radius:var(--radius);border:1px solid var(--border-dim)">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);margin-bottom:8px">AI Discharge Predictions</div>
+            <div style="display:flex;gap:12px;font-size:12px">
+              <div style="text-align:center">
+                <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--accent)">3</div>
+                <div style="color:var(--text-dim);font-size:10px">4 hours</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--accent)">6</div>
+                <div style="color:var(--text-dim);font-size:10px">8 hours</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--text-secondary)">11</div>
+                <div style="color:var(--text-dim);font-size:10px">24 hours</div>
+              </div>
+              <div style="margin-left:auto;text-align:right">
+                <div style="font-size:11px;color:var(--accent)">+2 admissions predicted</div>
+                <div style="font-size:10px;color:var(--text-dim)">next 8 hours</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Row 3: Vitals Chart + AI Reasoning Sample -->
+    <div class="grid-2" style="padding-bottom:24px">
+
+      <!-- Live Vitals Chart -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            Patient B-04 — Live Vitals
+            <span class="card-tag tag-live">1Hz</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="risk-badge CRITICAL"><span class="risk-dot"></span>CRITICAL</span>
+            <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px">Full View</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <canvas id="vitals-chart" height="180" style="width:100%"></canvas>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px">
+            <div style="text-align:center;padding:8px;background:var(--bg-elevated);border-radius:var(--radius);border:1px solid var(--border-dim)">
+              <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--critical)">128</div>
+              <div style="font-size:10px;color:var(--text-dim)">HR (bpm)</div>
+            </div>
+            <div style="text-align:center;padding:8px;background:var(--bg-elevated);border-radius:var(--radius);border:1px solid var(--border-dim)">
+              <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--high)">88</div>
+              <div style="font-size:10px;color:var(--text-dim)">SpO₂ (%)</div>
+            </div>
+            <div style="text-align:center;padding:8px;background:var(--bg-elevated);border-radius:var(--radius);border:1px solid var(--border-dim)">
+              <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--high)">92/58</div>
+              <div style="font-size:10px;color:var(--text-dim)">BP (mmHg)</div>
+            </div>
+            <div style="text-align:center;padding:8px;background:var(--bg-elevated);border-radius:var(--radius);border:1px solid var(--border-dim)">
+              <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--high)">28</div>
+              <div style="font-size:10px;color:var(--text-dim)">RR (/min)</div>
+            </div>
+            <div style="text-align:center;padding:8px;background:var(--bg-elevated);border-radius:var(--radius);border:1px solid var(--border-dim)">
+              <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--critical)">38.9</div>
+              <div style="font-size:10px;color:var(--text-dim)">Temp (°C)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Reasoning Panel -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            AI Clinical Reasoning — B-04
+            <span class="card-tag tag-ai">AI</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim)">Confidence: 77% &middot; MEDIUM</div>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+
+          <!-- Summary -->
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);margin-bottom:6px">Patient State</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;font-family:var(--font-serif);font-style:italic">
+              "67M admitted with progressive dyspnea. Vitals demonstrate tachycardia (HR 128), 
+              hypoxemia (SpO₂ 88%), and fever (38.9°C). Trend: worsening over 4 hours. 
+              Inflammatory markers elevated."
+            </div>
+          </div>
+
+          <!-- Differentials -->
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);margin-bottom:8px">Differential Diagnoses</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-elevated);border-radius:var(--radius-sm);border:1px solid rgba(255,61,90,0.2)">
+                <div style="width:28px;height:5px;background:var(--critical);border-radius:3px;flex-shrink:0"></div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:500">Septic Shock</div>
+                  <div style="font-size:10px;color:var(--text-dim)">HR▲, BP▼, Temp▲, PCT▲ — ICD-10: A41.9</div>
+                </div>
+                <div style="font-family:var(--font-display);font-weight:700;color:var(--critical)">72%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-elevated);border-radius:var(--radius-sm);border:1px solid var(--border-dim)">
+                <div style="width:28px;height:5px;background:var(--high);border-radius:3px;flex-shrink:0"></div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:500">Community Pneumonia</div>
+                  <div style="font-size:10px;color:var(--text-dim)">Fever, dyspnea, CXR pending — ICD-10: J18.9</div>
+                </div>
+                <div style="font-family:var(--font-display);font-weight:700;color:var(--high)">58%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-elevated);border-radius:var(--radius-sm);border:1px solid var(--border-dim)">
+                <div style="width:28px;height:5px;background:var(--medium);border-radius:3px;flex-shrink:0"></div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:500">Acute Decompensated HF</div>
+                  <div style="font-size:10px;color:var(--text-dim)">Known HF hx, BNP pending — ICD-10: I50.9</div>
+                </div>
+                <div style="font-family:var(--font-display);font-weight:700;color:var(--medium)">31%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recommended Actions -->
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);margin-bottom:8px">Recommended Actions</div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:rgba(255,61,90,0.05);border:1px solid rgba(255,61,90,0.15);border-radius:var(--radius-sm)">
+                <span style="color:var(--critical);font-size:11px;font-weight:600;flex-shrink:0">IMMEDIATE</span>
+                <span style="font-size:11px;color:var(--text-secondary)">Blood cultures × 2 + lactate — Sepsis-3 bundle initiation</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:var(--bg-elevated);border:1px solid var(--border-dim);border-radius:var(--radius-sm)">
+                <span style="color:var(--high);font-size:11px;font-weight:600;flex-shrink:0">SHORT-TERM</span>
+                <span style="font-size:11px;color:var(--text-secondary)">IV antibiotics within 1h — consider piperacillin/tazobactam per protocol</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:var(--bg-elevated);border:1px solid var(--border-dim);border-radius:var(--radius-sm)">
+                <span style="color:var(--text-dim);font-size:11px;font-weight:600;flex-shrink:0">MONITOR</span>
+                <span style="font-size:11px;color:var(--text-secondary)">Fluid resuscitation response, UO every 30 min, repeat lactate in 2h</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Data Gaps -->
+          <div style="padding:8px 10px;background:rgba(77,143,255,0.05);border:1px solid rgba(77,143,255,0.15);border-radius:var(--radius-sm)">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--accent-blue);margin-bottom:4px">Data Gaps Limiting Confidence</div>
+            <div style="font-size:11px;color:var(--text-dim)">Blood cultures pending &middot; BNP result pending &middot; Chest X-ray awaited &middot; No prior renal function</div>
+          </div>
+
+          <div class="feedback-strip">
+            <div class="feedback-label">Was this reasoning helpful?</div>
+            <button class="feedback-btn thumbup">👍</button>
+            <button class="feedback-btn thumbdown">👎</button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─── CLOCK ──────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-IN', { hour12: false });
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ─── PATIENT DATA ───────────────────────────────────────────────────
+const patients = [
+  { id: 'B-04', name: 'M/67y', bed: 'B-04', risk: 'CRITICAL', hr: 128, spo2: 88, sbp: 92, rr: 28, temp: 38.9, news2: 8, sepsis: 0.72, trend: 'up', diagnosis: 'Septic Shock' },
+  { id: 'B-11', name: 'F/54y', bed: 'B-11', risk: 'HIGH',     hr: 112, spo2: 92, sbp: 104,rr: 22, temp: 38.2, news2: 6, sepsis: 0.41, trend: 'up', diagnosis: 'Pneumonia' },
+  { id: 'B-07', name: 'M/79y', bed: 'B-07', risk: 'HIGH',     hr: 98,  spo2: 94, sbp: 110,rr: 19, temp: 37.8, news2: 5, sepsis: 0.28, trend: 'stable', diagnosis: 'COPD Exac.' },
+  { id: 'B-02', name: 'F/62y', bed: 'B-02', risk: 'HIGH',     hr: 94,  spo2: 93, sbp: 108,rr: 20, temp: 37.5, news2: 5, sepsis: 0.22, trend: 'down', diagnosis: 'Heart Failure' },
+  { id: 'B-15', name: 'M/45y', bed: 'B-15', risk: 'CRITICAL', hr: 140, spo2: 86, sbp: 85, rr: 32, temp: 39.1, news2: 9, sepsis: 0.81, trend: 'up', diagnosis: 'ARDS' },
+  { id: 'B-08', name: 'F/71y', bed: 'B-08', risk: 'MEDIUM',   hr: 88,  spo2: 96, sbp: 118,rr: 17, temp: 37.1, news2: 3, sepsis: 0.12, trend: 'stable', diagnosis: 'Post-op' },
+  { id: 'B-19', name: 'M/58y', bed: 'B-19', risk: 'MEDIUM',   hr: 90,  spo2: 95, sbp: 122,rr: 18, temp: 37.3, news2: 4, sepsis: 0.15, trend: 'down', diagnosis: 'GI Bleed' },
+  { id: 'B-23', name: 'F/83y', bed: 'B-23', risk: 'LOW',      hr: 76,  spo2: 97, sbp: 130,rr: 14, temp: 36.8, news2: 1, sepsis: 0.04, trend: 'down', diagnosis: 'Recovery' },
+];
+
+function renderPatients() {
+  const tbody = document.getElementById('patient-tbody');
+  tbody.innerHTML = patients.map(p => {
+    const trendIcon = p.trend === 'up' ? '↑' : p.trend === 'down' ? '↓' : '→';
+    const trendClass = p.trend === 'up' ? 'up' : p.trend === 'down' ? 'down' : 'stable';
+    const news2Class = p.news2 >= 7 ? 'crit' : p.news2 >= 5 ? 'high' : p.news2 >= 3 ? 'medium' : 'low';
+    const sepsisColor = p.sepsis > 0.7 ? 'var(--critical)' : p.sepsis > 0.5 ? 'var(--high)' : p.sepsis > 0.3 ? 'var(--medium)' : 'var(--accent)';
+
+    return `
+      <tr onclick="selectPatient('${p.id}')">
+        <td>
+          <div class="patient-id">${p.id}</div>
+          <div class="patient-meta">${p.name} &middot; ${p.diagnosis}</div>
+        </td>
+        <td><span class="risk-badge ${p.risk}"><span class="risk-dot"></span>${p.risk}</span></td>
+        <td>
+          <div class="vitals-mini">
+            <div class="vital-chip">
+              <div class="vital-chip-val ${p.hr > 120 ? (p.hr > 130 ? 'critical' : 'abnormal') : ''}">${p.hr}</div>
+              <div class="vital-chip-lbl">HR</div>
+            </div>
+            <div class="vital-chip">
+              <div class="vital-chip-val ${p.spo2 < 90 ? 'critical' : p.spo2 < 94 ? 'abnormal' : ''}">${p.spo2}</div>
+              <div class="vital-chip-lbl">SpO₂</div>
+            </div>
+            <div class="vital-chip">
+              <div class="vital-chip-val ${p.sbp < 100 ? 'critical' : p.sbp < 110 ? 'abnormal' : ''}">${p.sbp}</div>
+              <div class="vital-chip-lbl">SBP</div>
+            </div>
+            <div class="vital-chip">
+              <div class="vital-chip-val ${p.temp > 38.5 ? 'critical' : p.temp > 37.8 ? 'abnormal' : ''}">${p.temp.toFixed(1)}</div>
+              <div class="vital-chip-lbl">Temp</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="score-chip ${news2Class}">${p.news2}</span></td>
+        <td>
+          <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:${sepsisColor}">${(p.sepsis*100).toFixed(0)}%</div>
+          <div style="width:48px;height:3px;background:var(--bg-elevated);border-radius:2px;margin-top:3px">
+            <div style="width:${p.sepsis*100}%;height:100%;background:${sepsisColor};border-radius:2px;transition:width 0.5s ease"></div>
+          </div>
+        </td>
+        <td><span class="trend ${trendClass}">${trendIcon} ${p.trend.charAt(0).toUpperCase()+p.trend.slice(1)}</span></td>
+        <td><button class="table-action">Review →</button></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+renderPatients();
+
+function selectPatient(id) {
+  console.log('Selected patient:', id);
+  // In production: navigate to patient detail view
+}
+
+// ─── ALERTS ─────────────────────────────────────────────────────────
+const alerts = [
+  { sev: 'critical', icon: '🚨', patient: 'B-15 — M/45y', msg: 'Sepsis probability 81% — Sepsis bundle initiation recommended. Lactate critically elevated.', time: '2 min ago' },
+  { sev: 'critical', icon: '⚠️', patient: 'B-04 — M/67y', msg: 'NEWS2 = 8 — Urgent clinical response required. HR ↑ 128, BP ↓ 92/58, SpO₂ ↓ 88%.', time: '14 min ago' },
+  { sev: 'high',     icon: '💊', patient: 'B-11 — F/54y', msg: 'Drug Interaction: Vancomycin + Piperacillin — Nephrotoxicity risk. Monitor renal function q24h.', time: '31 min ago' },
+];
+
+document.getElementById('alert-list').innerHTML = alerts.map(a => `
+  <div class="alert-item ${a.sev}">
+    <div class="alert-icon">${a.icon}</div>
+    <div class="alert-content">
+      <div class="alert-patient">${a.patient}</div>
+      <div class="alert-message">${a.msg}</div>
+      <div class="alert-time">${a.time}</div>
+    </div>
+    <div class="alert-meta">
+      <button class="table-action" style="white-space:nowrap">Acknowledge</button>
+      <button class="table-action" style="white-space:nowrap">View</button>
+    </div>
+  </div>
+`).join('');
+
+// ─── AGENT STATUS ────────────────────────────────────────────────────
+const agents = [
+  { name: 'Triage Agent',       status: 'idle',    time: '0.4s' },
+  { name: 'Risk Agent',         status: 'running', time: '1.2s' },
+  { name: 'Pharmacist Agent',   status: 'idle',    time: '0.8s' },
+  { name: 'Diagnosis Agent',    status: 'idle',    time: '2.1s' },
+  { name: 'Coordinator',        status: 'idle',    time: '0.3s' },
+  { name: 'Escalation Agent',   status: 'idle',    time: '0.1s' },
+];
+
+document.getElementById('agent-grid').innerHTML = agents.map(a => `
+  <div class="agent-card">
+    <div class="agent-status-dot ${a.status}"></div>
+    <div class="agent-name">${a.name}</div>
+    <div class="agent-time">${a.time}</div>
+  </div>
+`).join('');
+
+// ─── BED MAP ─────────────────────────────────────────────────────────
+const bedData = [
+  'c','o','o','o','a','o','o','c',
+  'o','o','crit','o','o','a','o','o',
+  'o','a','o','o','o','o','crit','o',
+  'o','o','o','a','o','o','a','o',
+];
+const bedLabels = Array.from({length:32},(_,i)=>i<9?`B-0${i+1}`:`B-${i+1}`);
+const bedClasses = { c:'cleaning', o:'occupied', crit:'critical-patient', a:'available' };
+const bedDisplays = { c:'🧹', o:'', crit:'!', a:'' };
+
+document.getElementById('bed-map').innerHTML = bedData.map((type, i) => `
+  <div class="bed-cell ${bedClasses[type]}" title="${bedLabels[i]}">
+    ${bedDisplays[type] || (i+1)}
+  </div>
+`).join('');
+
+// ─── VITALS CHART ────────────────────────────────────────────────────
+const canvas = document.getElementById('vitals-chart');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.height * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+
+const W = canvas.offsetWidth || 500;
+const H = 180;
+canvas.style.width = W + 'px';
+canvas.style.height = H + 'px';
+canvas.width = W * devicePixelRatio;
+canvas.height = H * devicePixelRatio;
+ctx.scale(devicePixelRatio, devicePixelRatio);
+
+// Generate realistic vital sign history
+function generateVitals(base, variance, points) {
+  let v = base;
+  return Array.from({length:points}, () => {
+    v += (Math.random() - 0.45) * variance;
+    return Math.max(base*0.7, Math.min(base*1.4, v));
+  });
+}
+
+const hrData  = generateVitals(115, 8, 60);
+const spo2Data = generateVitals(89, 1.5, 60);
+const sbpData = generateVitals(94, 6, 60);
+
+function drawChart() {
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { top: 10, bottom: 24, left: 8, right: 8 };
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (cH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+  }
+
+  function drawLine(data, color, yMin, yMax) {
+    const n = data.length;
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 4;
+    data.forEach((v, i) => {
+      const x = pad.left + (i / (n-1)) * cW;
+      const y = pad.top + cH - ((v - yMin) / (yMax - yMin)) * cH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Draw area fill for HR
+  const n = hrData.length;
+  ctx.beginPath();
+  hrData.forEach((v, i) => {
+    const x = pad.left + (i / (n-1)) * cW;
+    const y = pad.top + cH - ((v - 60) / (180-60)) * cH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(W - pad.right, pad.top + cH);
+  ctx.lineTo(pad.left, pad.top + cH);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
+  grad.addColorStop(0, 'rgba(255,61,90,0.08)');
+  grad.addColorStop(1, 'rgba(255,61,90,0)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  drawLine(hrData,  '#ff3d5a', 60,  180);  // HR — red
+  drawLine(spo2Data, '#f4c542', 82,  100);  // SpO2 — yellow
+  drawLine(sbpData, '#4d8fff', 60,  140);  // SBP — blue
+
+  // Labels
+  ctx.fillStyle = 'rgba(142,155,191,0.7)';
+  ctx.font = '10px DM Mono, monospace';
+  ctx.fillText('60min', pad.left, H - 6);
+  ctx.fillText('Now', W - pad.right - 22, H - 6);
+
+  // Legend
+  const legend = [
+    { label: 'HR', color: '#ff3d5a' },
+    { label: 'SpO₂', color: '#f4c542' },
+    { label: 'SBP', color: '#4d8fff' },
+  ];
+  legend.forEach((l, i) => {
+    const lx = pad.left + i * 70 + 20;
+    ctx.fillStyle = l.color;
+    ctx.fillRect(lx, 4, 16, 3);
+    ctx.fillStyle = 'rgba(142,155,191,0.8)';
+    ctx.fillText(l.label, lx + 20, 12);
+  });
+}
+
+drawChart();
+
+// Animate vitals in real-time
+let tick = 0;
+setInterval(() => {
+  tick++;
+  hrData.shift();
+  hrData.push(Math.max(100, Math.min(145, hrData[hrData.length-1] + (Math.random()-0.4)*4)));
+  spo2Data.shift();
+  spo2Data.push(Math.max(84, Math.min(93, spo2Data[spo2Data.length-1] + (Math.random()-0.5)*1)));
+  sbpData.shift();
+  sbpData.push(Math.max(80, Math.min(105, sbpData[sbpData.length-1] + (Math.random()-0.45)*3)));
+
+  // Update live vital displays
+  const hrEl = document.querySelector('.card:last-child .card-body .vital-chip-val');
+
+  drawChart();
+}, 1000);
+
+// ─── SYNC TIME ───────────────────────────────────────────────────────
+setInterval(() => {
+  document.getElementById('sync-time').textContent = 'just now';
+}, 5000);
+
+// ─── FEEDBACK BUTTONS ────────────────────────────────────────────────
+document.querySelectorAll('.feedback-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const isUp = this.classList.contains('thumbup');
+    this.style.background = isUp ? 'rgba(0,210,150,0.2)' : 'rgba(255,61,90,0.2)';
+    this.style.borderColor = isUp ? 'rgba(0,210,150,0.5)' : 'rgba(255,61,90,0.5)';
+    // In production: POST to /api/v1/feedback
+    setTimeout(() => {
+      this.style.background = '';
+      this.style.borderColor = '';
+    }, 2000);
+  });
+});
+
+// ─── KPIS ANIMATE ────────────────────────────────────────────────────
+// Simulate real-time KPI updates
+setInterval(() => {
+  const kpiCritical = document.getElementById('kpi-critical');
+  if (kpiCritical) {
+    const v = 2 + (Math.random() > 0.9 ? 1 : 0);
+    kpiCritical.textContent = v;
+  }
+}, 30000);
+
+</script>
+</body>
+</html>

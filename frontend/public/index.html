@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="description" content="CliniQAI Hospital Intelligence Platform" />
+
+  <!-- Security -->
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+
+  <title>CliniQAI — Hospital Intelligence Platform</title>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-base:        #050810;
+      --bg-card:        #131928;
+      --bg-elevated:    #0f1524;
+      --border-dim:     rgba(255,255,255,0.06);
+      --text-primary:   #e8edf8;
+      --text-secondary: #8e9bbf;
+      --text-dim:       #4a5270;
+      --accent:         #00d296;
+      --accent-blue:    #4d8fff;
+      --critical:       #ff3d5a;
+      --high:           #ff8c42;
+      --medium:         #f4c542;
+    }
+    body {
+      background: var(--bg-base);
+      color: var(--text-primary);
+      font-family: "DM Mono", monospace;
+      -webkit-font-smoothing: antialiased;
+    }
+    #root { min-height: 100vh; }
+
+    /* Loading spinner shown before React mounts */
+    .initial-loader {
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; flex-direction: column; gap: 16px;
+    }
+    .initial-loader span {
+      font-family: "Syne", sans-serif; font-size: 24px; font-weight: 800;
+      color: var(--accent); letter-spacing: -0.03em;
+    }
+    .initial-loader small {
+      font-size: 12px; color: var(--text-dim);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+    @keyframes badge-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,61,90,0.4); } 70% { box-shadow: 0 0 0 6px rgba(255,61,90,0); } }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="initial-loader">
+      <span>CliniQAI</span>
+      <small>Hospital Intelligence Platform · Loading…</small>
+    </div>
+  </div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
