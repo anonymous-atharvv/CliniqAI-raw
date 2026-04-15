@@ -259,7 +259,7 @@ cd frontend && npm install && npm run dev
 
 ---
 
-## 📞 Critical Contacts (Template for Hospital Deployment)
+## 📞 Critical Contacts 
 
 - **HIPAA Privacy Officer**: ATHARV MAURYA
 - **Security Officer**: ATHARV MAURYA
